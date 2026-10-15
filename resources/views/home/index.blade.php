@@ -51,7 +51,7 @@
                 <li>Viidessä huoneessa oma vessa, muissa yhteiskäyttöinen</li>
             </ul>
         </div>
-        <img src="{{ asset('images/gallery/breakfast.svg') }}" alt="Aamupalasali keittiön vieressä" loading="lazy">
+        <img src="{{ asset('images/gallery/breakfast-pixabay.jpg') }}" alt="Leipiä ja leivonnaisia aamupalapöydässä" loading="lazy">
     </div>
 </section>
 

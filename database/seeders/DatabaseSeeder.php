@@ -44,9 +44,12 @@ class DatabaseSeeder extends Seeder
                 'price_per_night'  => $family ? 119 : ($bath ? 89 + ($n - 6) * 4 : 59 + ($n % 5) * 3),
                 'capacity'         => $family ? 4 : ($n % 3 === 0 ? 3 : 2),
                 'private_bathroom' => $bath,
-                'image'            => $family ? 'images/rooms/room-family.svg'
-                                    : ($bath ? 'images/rooms/room-bath.svg'
-                                    : ($n >= 11 && $n % 2 ? 'images/rooms/room-attic.svg' : 'images/rooms/room-default.svg')),
+                'image'            => match (true) {
+                    $family => 'images/rooms/room-log-pixabay.jpg',
+                    $bath => 'images/rooms/room-guest-pixabay.jpg',
+                    $n >= 11 && $n % 2 => 'images/rooms/room-cabin-pixabay.jpg',
+                    default => 'images/rooms/room-twin-pixabay.jpg',
+                },
             ]);
         }
 
@@ -65,19 +68,35 @@ class DatabaseSeeder extends Seeder
         }
 
         // ----- Galleria -----
-        if (GalleryImage::count() === 0) {
-            foreach ([
-                ['Kevät pihalla', 'Omenapuut kukkivat toukokuussa', 'images/seasons/spring.svg', 'spring'],
-                ['Kesäilta', 'Peltojen yllä pitkät valoisat illat', 'images/seasons/summer.svg', 'summer'],
-                ['Ruska', 'Syksyn värit tilan ympärillä', 'images/seasons/autumn.svg', 'autumn'],
-                ['Talviyö', 'Lunta ja revontulia', 'images/seasons/winter.svg', 'winter'],
-                ['Aamupalasali', 'Aamupala klo 7–11 keittiön vieressä', 'images/gallery/breakfast.svg', null],
-                ['Huone 6', 'Oma vessa ja ikkuna peltoon', 'images/rooms/room-bath.svg', null],
-                ['Vintin huone', 'Kattoparrut ja lämmin valo', 'images/rooms/room-attic.svg', null],
-                ['Perhehuone', 'Tilaa neljälle', 'images/rooms/room-family.svg', null],
-            ] as [$title, $caption, $path, $season]) {
-                GalleryImage::create(compact('title', 'caption', 'path', 'season'));
-            }
+        GalleryImage::whereIn('path', [
+            'images/seasons/spring.svg',
+            'images/seasons/summer.svg',
+            'images/seasons/autumn.svg',
+            'images/seasons/winter.svg',
+            'images/gallery/breakfast.svg',
+            'images/rooms/room-bath.svg',
+            'images/rooms/room-attic.svg',
+            'images/rooms/room-family.svg',
+            'images/gallery/summer-lake.jpg',
+            'images/gallery/lake-cabin.jpg',
+            'images/gallery/misty-forest.jpg',
+            'images/gallery/field-sunrise.jpg',
+            'images/gallery/mountain-dusk.jpg',
+            'images/gallery/aurora-pixabay.jpg',
+        ])->delete();
+
+        foreach ([
+            ['Kevät pihalla', 'Kukkiva puutarha vanhan talon ympärillä · Kuva Pixabaysta', 'images/seasons/spring.jpg', 'spring'],
+            ['Kesäjärvi', 'Aurinko laskee suomalaisen järven taakse · Kuva Pixabaysta', 'images/seasons/summer.jpg', 'summer'],
+            ['Ruska järven rannalla', 'Syksyinen mökki ja tyyni järvi · Kuva Pixabaysta', 'images/seasons/autumn.jpg', 'autumn'],
+            ['Revontulet Lapissa', 'Revontulia Inarin yötaivaalla · Kuva Pixabaysta', 'images/gallery/aurora-pixabay.jpg', 'winter'],
+            ['Aamupalapöytä', 'Leipiä, leivonnaisia ja kahvia · Kuva Pixabaysta', 'images/gallery/breakfast-pixabay.jpg', null],
+            ['Hirsimökin makuuhuone', 'Lämmin puinen huone ja valmiiksi pedattu sänky · Kuva Pixabaysta', 'images/rooms/room-log-pixabay.jpg', null],
+        ] as [$title, $caption, $path, $season]) {
+            GalleryImage::updateOrCreate(
+                ['title' => $title],
+                compact('caption', 'path', 'season')
+            );
         }
 
         // ----- Arvosteluja -----
