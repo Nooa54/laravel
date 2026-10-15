@@ -28,40 +28,37 @@
     <div class="field"><label><input type="checkbox" name="private_bathroom" value="1" @checked(old('private_bathroom', $room->private_bathroom))> Huoneessa on oma vessa</label></div>
     <div class="field">
         <label for="image">Kuva</label>
-        @if($room->exists)<img id="currentImage" src="{{ $room->image_url }}" alt="Nykyinen kuva" style="width:180px;border-radius:10px;margin-bottom:.5rem">@endif
-        <img id="imagePreview" src="" alt="Valittu kuva" style="display:none;width:180px;border-radius:10px;margin-bottom:.5rem">
-        <input id="image" type="file" name="image" accept="image/*" onchange="previewRoomImage(this)">
+        <img id="imagePreview" src="{{ $room->exists ? $room->image_url : '' }}" alt="Huoneen kuva" style="width:180px;border-radius:10px;margin-bottom:.5rem">
+        <input id="image" type="file" name="image" accept="image/*">
         @error('image')<div class="error">{{ $message }}</div>@enderror
     </div>
     <button class="btn" type="submit">Tallenna</button>
     <a class="btn btn-ghost" href="{{ route('admin.rooms.index') }}">Peruuta</a>
 </form>
 </div>
+@endsection
 
+@push('scripts')
 <script>
-    function previewRoomImage(input) {
-        const preview = document.getElementById('imagePreview');
-        const currentImage = document.getElementById('currentImage');
-        const file = input.files[0];
-
-        if (!file) {
-            preview.style.display = 'none';
-            preview.removeAttribute('src');
-            if (currentImage) {
-                currentImage.style.display = '';
-            }
+    document.addEventListener('change', function (event) {
+        if (event.target.id !== 'image') {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = function () {
-            preview.src = reader.result;
-            preview.style.display = 'block';
-            if (currentImage) {
-                currentImage.style.display = 'none';
-            }
+        const input = event.target;
+        const preview = document.getElementById('imagePreview');
+        const file = input.files[0];
+
+        if (!file) {
+            preview.src = '{{ $room->exists ? $room->image_url : '' }}';
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        preview.src = objectUrl;
+        preview.onload = function () {
+            URL.revokeObjectURL(objectUrl);
         };
-        reader.readAsDataURL(file);
-    }
+    });
 </script>
-@endsection
+@endpush
