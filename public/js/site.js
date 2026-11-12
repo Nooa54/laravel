@@ -49,11 +49,76 @@
   var input = document.getElementById('chatInput');
   var history = [];
   var greeted = false;
+  var convId = 0; // kasvaa aina kun aloitetaan uusi keskustelu
+
+  // Näyttää viestin turvallisesti: koodilohkot, **lihavointi** ja `koodi`
+  function renderMessage(el, text) {
+    el.textContent = '';
+
+    function addInline(parent, str) {
+      str.split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(function (seg) {
+        if (!seg) return;
+        var node;
+        if (seg.startsWith('**') && seg.endsWith('**') && seg.length > 4) {
+          node = document.createElement('strong');
+          node.textContent = seg.slice(2, -2);
+        } else if (seg.startsWith('`') && seg.endsWith('`') && seg.length > 2) {
+          node = document.createElement('code');
+          node.textContent = seg.slice(1, -1);
+        } else {
+          node = document.createElement('span');
+          node.className = 'txt';
+          node.textContent = seg;
+        }
+        parent.appendChild(node);
+      });
+    }
+
+    text.split('```').forEach(function (part, i) {
+      if (i % 2 === 0) {
+        if (part.trim()) {
+          var p = document.createElement('div');
+          p.className = 'txt-block';
+          addInline(p, part.replace(/^\n+|\n+$/g, ''));
+          el.appendChild(p);
+        }
+        return;
+      }
+      var nl = part.indexOf('\n');
+      var lang = nl > -1 ? part.slice(0, nl).trim() : '';
+      var code = (nl > -1 ? part.slice(nl + 1) : part).replace(/\n$/, '');
+
+      var wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      var bar = document.createElement('div');
+      bar.className = 'code-bar';
+      var label = document.createElement('span');
+      label.textContent = lang || 'koodi';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'Kopioi';
+      btn.addEventListener('click', function () {
+        navigator.clipboard.writeText(code).then(function () {
+          btn.textContent = 'Kopioitu!';
+          setTimeout(function () { btn.textContent = 'Kopioi'; }, 1500);
+        });
+      });
+      bar.appendChild(label);
+      bar.appendChild(btn);
+      var pre = document.createElement('pre');
+      var c = document.createElement('code');
+      c.textContent = code;
+      pre.appendChild(c);
+      wrap.appendChild(bar);
+      wrap.appendChild(pre);
+      el.appendChild(wrap);
+    });
+  }
 
   function add(role, text, cls) {
     var d = document.createElement('div');
     d.className = 'msg ' + (role === 'user' ? 'me' : 'bot') + (cls ? ' ' + cls : '');
-    d.textContent = text;
+    renderMessage(d, text);
     log.appendChild(d);
     log.scrollTop = log.scrollHeight;
     return d;
@@ -71,10 +136,29 @@
   function close() { box.classList.remove('open'); fab.setAttribute('aria-expanded', 'false'); }
 
   fab.addEventListener('click', function () { box.classList.contains('open') ? close() : open(); });
-  document.getElementById('chatClose').addEventListener('click', close);
+  var closeBtn = document.getElementById('chatClose');
+  closeBtn.addEventListener('click', close);
+
+  // Uusi keskustelu -nappi (lisätään sulje-napin viereen)
+  var newBtn = document.createElement('button');
+  newBtn.type = 'button';
+  newBtn.id = 'chatNew';
+  newBtn.title = 'Aloita uusi keskustelu';
+  newBtn.setAttribute('aria-label', 'Aloita uusi keskustelu');
+  newBtn.textContent = '↻ Uusi';
+  closeBtn.parentNode.insertBefore(newBtn, closeBtn);
+
+  newBtn.addEventListener('click', function () {
+    convId++;            // mitätöi mahdollisen kesken olevan vastauksen
+    history.length = 0;  // tyhjentää keskusteluhistorian
+    log.innerHTML = '';  // tyhjentää viestit näkyvistä
+    greeted = false;
+    open();              // näyttää tervehdyksen uudelleen ja asettaa kohdistimen kenttään
+  });
 
   async function send(text) {
     if (!text.trim()) return;
+    var myConv = convId;
     add('user', text);
     history.push({ role: 'user', content: text });
     var typing = add('assistant', 'Kirjoittaa…', 'typing');
@@ -89,11 +173,13 @@
         body: JSON.stringify({ messages: history.slice(-12) })
       });
       var data = await res.json();
+      if (myConv !== convId) return; // keskustelu vaihtui kesken vastauksen
       typing.remove();
       var reply = data.reply || 'Hups, en saanut vastausta. Kokeile hetken päästä uudelleen.';
       add('assistant', reply);
       history.push({ role: 'assistant', content: reply });
     } catch (e) {
+      if (myConv !== convId) return;
       typing.remove();
       add('assistant', 'Yhteys katkesi. Soita meille tai kokeile hetken päästä uudelleen.');
     }
